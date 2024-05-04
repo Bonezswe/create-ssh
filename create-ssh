@@ -1,0 +1,46 @@
+#!/bin/bash
+
+read -p "Enter your email: " EMAIL
+
+ssh-keygen -t rsa -b 4096 -C "$EMAIL"
+
+SSH_PROCESS=$!
+
+wait $SSH_PROCESS
+
+eval $(ssh-agent)
+read -p "Enter file location: " FILE_LOCATION
+ssh-add $FILE_LOCATION
+clip < "$FILE_LOCATION.pub"
+
+
+read -p "Enter git host name (e.g githubb/bitbucket): " HOST_NAME
+
+read -p "Enter Host ID: " HOST_ID
+
+ORG_DOMAIN=""
+
+if [ "$HOST_NAME" == "github" ]; then
+    ORG_DOMAIN=".com"
+elif [ "$HOST_NAME" == "bitbucket" ]; then
+    ORG_DOMAIN=".org"
+else
+    echo "Domain not supported"
+    exit
+fi
+
+echo "$ORG_DOMAIN"
+
+FILE_TEMPLATE="
+# SSH key for $HOST_NAME with $HOST_ID
+Host $HOST_NAME$ORG_DOMAIN-$HOST_ID
+    Hostname $HOST_NAME$ORG_DOMAIN
+    User git
+    IdentityFile $FILE_LOCATION
+"
+
+SEARCH_STRING=".ssh"
+
+SSH_FOLDER=${FILE_LOCATION%%$SEARCH_STRING*}$SEARCH_STRING
+
+echo "$FILE_TEMPLATE" >> "$SSH_FOLDER"/config
